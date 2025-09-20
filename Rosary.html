@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Rosary</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+      .Deceased {font-weight:bold; font-style: italic;}
+      .MyTextX {font-size:30px;}
+      h1 {text-align:center}
+      .Arrow {border-radius:50%; font-size:1.5em}
+      .MyBead {font-size:2em}
+      .NonSelectedBead {background-color:lightyellow;color: black;border-radius:50%}
+      .SelectedBead {background-color:yellow;color: #008900;border-radius:50%}
+    </style>
+    <script>
+
+      const StateMachinePre = [
+          "PI", "PAC", "POF", "PFTHM", "PHM", "PHM", "PHM",  "PGB"];
+      const StateMachineDecade = [
+          "PBD", "POF", "PHM",  "PHM",  "PHM",  "PHM",  "PHM",  "PHM",  "PHM",  "PHM",  "PHM",  "PHM", "PGB", "PFP"];
+      const StateMachineScriptureDecade = [
+          "PBD", "POF", "SBHM", "PHM", "SBHM", "PHM", "SBHM",  "PHM", "SBHM",  "PHM", "SBHM",  "PHM", "SBHM",  "PHM", "SBHM",  "PHM", "SBHM",  "PHM", "SBHM",  "PHM", "SBHM",  "PHM", "PGB", "PFP"];
+      const StateMachinePost = [
+          "PHHQ", "PDA", "PIHF", "POF", "PHM", "PGB", "PSM", "PM", "PCL"];
+      let _Var = {
+          Cross: 9840,
+          BigBead: 10057,
+          LittleBead: 10039,
+          SelectColor: "#008900",
+          SelectTextColor: "lightgreen",
+          Page: -1,
+          Decade: 0,
+          DecadeCnt: 0,
+          SubPage: 1, // Never set to 5
+          States :[1, StateMachinePre, 5, StateMachineDecade, 1, StateMachinePost],
+          BeadState: [],
+          LastMyText: 0
+      }
+
+      // Into, Prayers, Mysteries, Scriprual
+      function SelectPage(page) {
+          if (page != _Var.Page) {
+              $(".MyPage").hide();
+              $(".MyPage" + page).show();
+              $(".MyPageSel").removeClass("btn-success");
+              $(".MyPageSel").addClass("btn-secondary");
+              $(".MyPageSel" + page).removeClass("btn-secondary");
+              $(".MyPageSel" + page).addClass("btn-success");
+              if (page  == 3) {
+                  _Var.States[3] = StateMachineDecade;
+              } else if (page == 4) {
+                  _Var.States[3] = StateMachineScriptureDecade;
+              }
+          }
+          _Var.Page = page;
+      }
+      // Joyful, Luminous, Sorrowful, Glorious, Funeral
+      function SelectSubPage(page) {
+          if (page < 5) {
+              _Var.SubPage = page;
+          }
+          $(".MySubPage").hide();
+          $(".MySubPage" + page).show();
+          $(".MySubPageSel").removeClass("btn-success");
+          $(".MySubPageSel").addClass("btn-secondary");
+          $(".MySubPageSel" + page).removeClass("btn-secondary");
+          $(".MySubPageSel" + page).addClass("btn-success");
+          SelectDecade(0);
+      }
+      function PrevState() {
+          let DState = GetDecadeState();
+          if (_Var.DecadeCnt > 0) {
+              _Var.DecadeCnt = (_Var.DecadeCnt + DState.length - 1) % DState.length;
+          } else {
+              PrevDecade();
+              DState = GetDecadeState();
+              _Var.DecadeCnt = DState.length  - 1;
+          }
+          DisplayState();
+      }
+      function NextState() {
+          let DState = GetDecadeState();
+          _Var.DecadeCnt = (_Var.DecadeCnt + 1) % DState.length;
+          if (_Var.DecadeCnt == 0) {
+              NextDecade();
+          }
+          DisplayState();
+      }
+      function PrevDecade() {
+          if (_Var.Decade > 0) {
+              SelectDecade(_Var.Decade - 1);
+          }
+      }
+      function NextDecade() {
+          let Max = 0;
+          for (i = 0; i < _Var.States.length; i += 2) {
+              Max += _Var.States[i];
+          }
+          SelectDecade((_Var.Decade + 1) % Max);
+      }
+      function GetDecadeState() {
+          let n = 0;
+          for (i = 0; i < _Var.States.length; i += 2) {
+              let DState = _Var.States[i+1];
+              for (j = 0; j < _Var.States[i]; j++) {
+                  if (n ==  _Var.Decade) return DState;
+                  n++;
+              }
+          }
+      }
+      function DisplayState() {
+          let DState = GetDecadeState();
+          let ID = DState[_Var.DecadeCnt];
+          let msg = "";
+          let chm = 1;
+          for (i = 0; i < (_Var.BeadState.length - 1); i += 2) {
+              let CurrentBead = (_Var.DecadeCnt >= _Var.BeadState[i]) && (_Var.DecadeCnt < _Var.BeadState[i+2])
+              if ((_Var.DecadeCnt >= _Var.BeadState[i])  && (_Var.BeadState[i+1] == _Var.LittleBead)) chm++;
+              msg += "<span class='" + (CurrentBead ? "SelectedBead": "NonSelectedBead") + "'>";
+              msg += "&#" + _Var.BeadState[i + 1] + " ";
+              msg += "</span>";
+          }
+          $(".MyBead").html(msg);
+          msg = ID;
+          if (ID == "PBD") {
+              ID += _Var.Decade;
+          } else if (ID == "SBHM") {
+              ID += chm;
+          }
+          msg = $("." + ID);
+          if (_Var.LastMyText) _Var.LastMyText.css("background-color", "");
+          _Var.LastMyText = msg;
+          msg.css("background-color", _Var.SelectTextColor);
+          if (ID.startsWith("PBD")) {
+              if (_Var.States[3] == StateMachineDecade) {
+                  SelectPage(3);
+              } else {
+                  SelectPage(4);
+              }
+          } else {
+              msg = msg.parents(".MyPage");
+              for (i =  1; i < 5; i++) {
+                  if (msg.hasClass("MyPage" + i)) {
+                      SelectPage(i);
+                  }
+              }
+          }
+          msg = $("." + ID + ":visible");
+          if (msg.length == 1) {
+              if (msg.prev().length == 1) {
+                  msg = msg.prev();
+              }
+              msg[0].scrollIntoView();
+          }
+      }
+      // 0 - 6  Intro + 5 Decades + Closing
+      function SelectDecade(decade) {
+          $(".MyDecade").hide();
+          $(".MyDecade" + decade).show();
+          $(".MyDecadeSel").removeClass("btn-success");
+          $(".MyDecadeSel").addClass("btn-secondary");
+          $(".MyDecadeSel" + decade).removeClass("btn-secondary");
+          $(".MyDecadeSel" + decade).addClass("btn-success");
+          _Var.Decade = decade;
+          _Var.DecadeCnt = 0;   // Will be reset if PrevState is called
+          let DState = GetDecadeState();
+          _Var.BeadState.length = 0;
+          for (i = 0; i < DState.length; i++) {
+              let code = DState[i];
+              if (code == "PAC") {
+                  PushBeadState(i, _Var.Cross);
+              } else if (code == "POF") {
+                  PushBeadState(i, _Var.BigBead);
+              } else if (code == "PHM") {
+                  PushBeadState(i, _Var.LittleBead);
+              }
+          }
+          _Var.BeadState.push(DState.length);
+      }
+      function PushBeadState(index, val) {
+          _Var.BeadState.push(index);
+          _Var.BeadState.push(val);   // Handle Boundary condition
+      }
+      // Traditional, I Desire, Fruits, World Missionary
+      function SelectVersion(ver) {
+          $(".MyVersion").hide();
+          $(".MyVersion" + ver).show();
+          $(".MyVersionSel").removeClass("btn-success");
+          $(".MyVersionSel").addClass("btn-secondary");
+          $(".MyVersionSel" + ver).removeClass("btn-secondary");
+          $(".MyVersionSel" + ver).addClass("btn-success");
+      }
+      // Traditional, Imaculate Heard Chaplet, Divine Mercy Chaplet
+      function SelectPVersion(ver) {
+          $(".MyPVersion").hide();
+          $(".MyPVersion" + ver).show();
+          $(".MyPVersionSel").removeClass("btn-success");
+          $(".MyPVersionSel").addClass("btn-secondary");
+          $(".MyPVersionSel" + ver).removeClass("btn-secondary");
+          $(".MyPVersionSel" + ver).addClass("btn-success");
+      }
+      // Regular, Funeral
+      function SelectIntro(ver) {
+          $(".MyIntro").hide();
+          $(".MyIntro" + ver).show();
+          $(".MyIntroSel").removeClass("btn-success");
+          $(".MyIntroSel").addClass("btn-secondary");
+          $(".MyIntroSel" + ver).removeClass("btn-secondary");
+          $(".MyIntroSel" + ver).addClass("btn-success");
+          if (ver == 2) {
+              SelectSubPage(5);
+          } else {
+              SelectSubPage(_Var.SubPage);
+          }
+      }
+
+      function SetFontSize(val) {
+          $(".MyText").css("font-size", "" + val + "px");
+          Resize();
+      }
+
+      function Resize() {
+          let hd = $(".card-header");
+          let hht = hd.height();
+          let ft = $(".card-footer");
+          let fht = ft.height();
+          let bsize = $(window).height() - hht - fht;
+          $(".card-body").css("height", bsize - 30);
+      }
+
+      $(function() {
+          $(".Deceased").text("______");
+          $("#deceased").on("change",function(event, ui) {
+              let val = $(this).val();
+              $(".Deceased").text("___" + val + "___");
+          });
+          addEventListener("resize", (event) => {
+              Resize();
+          });
+          SelectPage(1); // Intro
+          let day = new Date().getDate();
+          SelectSubPage(((day - 1) % 4) + 1); // Based on day of the month
+          SelectDecade(0);  // Intro
+          SelectIntro(1); // Normal
+          SelectVersion(1); // Traditional
+          SelectPVersion(1); // Traditional
+          SetFontSize(20);
+          $("#FontSlider").val(20);
+          $("#FontSlider").on("change",function(event, ui) {
+              let val = $(this).val();
+              SetFontSize(val);
+          });
+          DisplayState();
+          // Printer Setup
+          if (false) {
+              _Var.SelectTextColor = "";
+              $(".card").css("border", "none");
+              $(".card-header").css("display", "none");
+              $(".card-footer").css("display", "none");
+              $(".card-body").css("height", 0);
+              $(".card-body").removeClass("overflow-auto");
+              SelectPage(3);
+              SelectSubPage(4);
+              //DisplayState();
+              $("#PrayerSet").css("display", "none");
+              $("#IntroductionType").css("display", "none");
+              $("#RosaryType").css("display", "none");
+          }
+      });
+      </script>
+  </head>
+  <body>
+    <div class="container-fluid">
+      <div class="card">
+        <div class="card-header">
+          Text Size: <input type="range" class="form range" min="18" max="42" id="FontSlider" style="width:95%">
+          <div class="btn-group btn-group-justified" style="width:100%">
+            <button type="button" onclick="SelectPage(1)" class="MyPageSel MyPageSel1 btn btn-success">Introduction</button>
+            <button type="button" onclick="SelectPage(2)" class="MyPageSel MyPageSel2 btn btn-success">Rosary Prayers</button>
+            <button type="button" onclick="SelectPage(3)" class="MyPageSel MyPageSel3 btn btn-success">Rosary Mysteries</button>
+            <button type="button" onclick="SelectPage(4)" class="MyPageSel MyPageSel4 btn btn-success">Scriptural Rosary</button>
+          </div>
+        </div>
+        <div class="card-body overflow-auto" style="height:800px">
+          <div class="MyPage MyPage1">
+            <div class="dropdown" style="float:right" id="IntroductionType">
+              <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Introduction Type</button>
+              <ul class="dropdown-menu">
+                <li><button type="button" onclick="SelectIntro(1)" class="btn btn-success MyIntroSel MyIntroSel1">Normal</button></li>
+                <li><button type="button" onclick="SelectIntro(2)" class="btn btn-secondary MyIntroSel MyIntroSel2">Funeral</button></li>
+              </ul>
+            </div>
+            <div class="MyIntro MyIntro1">
+              <h1>Normal Rosary Introduction</h1>
+              <div class="MyText PI">
+                Welcome to <i><b>today&apos;s/tonight&apos;s</b></i> offering of the Holy Rosary!
+                <br><b>[Insert any special welcoming here]</b>
+                <br>As always we offer our prayers on behalf of the intentions of:
+                <ul>
+                  <li class="MyText">Our Holy Father, Pope Leo
+                  <li class="MyText">Our Bishop, Danniel Garcia
+                  <li class="MyText">The special intentions and needs of our parish family, especially those not present with us <i><b>today/tonight</b></i>
+                  <li class="MyText">And for increased response to the call for vocations to
+                    <ul>
+                      <li class="MyText">The priesthood,
+                      <li class="MyText">The Diaconate,
+                      <li class="MyText">Consecrated religious,
+                      <li class="MyText">And sacramental marriage.
+                    </ul>
+                  <li class="MyText">For the sancrity of life from conception to natural death.
+                </ul>
+                We know that when we gather together in His name, our Lord is present among us, therefore we appeal to Him:
+                <ul>
+                  <li class="MyText">For an end to the persecution of religious populations
+                  <li class="MyText">For loving care for those tormented by war, drought, or suppression
+                  <li class="MyText">For comfort for the sick
+                  <li class="MyText">And I now invite you to express aloud any personal intentions that you would like to share.
+                </ul>
+                <i><b>(PAUSE)</b></i>
+                <br>Lord, hear [our prayers] or [the prayers of your people]!
+              </div>
+            </div>
+            <div class="MyIntro MyIntro2">
+              <h1>Funeral Rosary Introduction</h1>
+              <div class="MyText PI">
+                <label for="deceased">Deceased:</label>
+                <input type="text" data-clear-btn="true" id="deceased" name="deceased" value="" placeholder="Enter Name Here">
+                <br>
+                In times of sickness and death, prayers are the best means of consolation, comfort and help that people can give. Let us now begin this Rosary by calling on our Blessed Mother Mary to pray for us now as we pray for <span class="Deceased"></span>.
+                <br>
+                God of heaven, You called <span class="Deceased"></span> from this life. God of Mercy, fulfill his/her faith and hope in You. Lead <span class="Deceased"></span> safely home to heaven to be with You forever, filled with joy and peace in Your presence. We ask this through Christ, our Lord. Amen.
+              </div>
+            </div>
+          </div>
+          <div class="MyPage MyPage2">
+            <div class="dropdown" style="float:right" id="RosaryType">
+              <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Rosary Type</button>
+              <ul class="dropdown-menu">
+                <li><button type="button" onclick="SelectPVersion(1)" class="btn btn-success MyPVersionSel MyPVersionSel1">Traditional</button></li>
+                <li><button type="button" onclick="SelectPVersion(2)" class="btn btn-secondary MyPVersionSel MyPVersionSel2">Imaculate Heart Chaplet</button></li>
+                <li><button type="button" onclick="SelectPVersion(3)" class="btn btn-secondary MyPVersionSel MyPVersionSel3">Divine Mercy Chaplet</button></li>
+              </ul>
+            </div>
+            <h1>Rosary Prayers</h1>
+            <div class="MyPVersion MyPVersion1">
+              <h2>Apostle&apos;s Creed:</h2>
+              <div class="MyText PAC">
+                I believe in God, the Father almighty, Creator of heaven and earth, and in Jesus Christ, his only Son, our Lord, who was conceived by the Holy Spirit, born of the Virgin Mary, suffered under Pontius Pilate, was crucified, died and was buried; he descended into hell; on the third day he rose again from the dead; he ascended into heaven, and is seated at the right hand of God the Father almighty; from there he will come to judge the living and the dead. ** I believe in the Holy Spirit, the holy catholic Church, the communion of saints, the forgiveness of sins, the resurrection of the body, and life everlasting. Amen.
+              </div>
+              <h2>Our Father:</h2>
+              <div class="MyText POF">
+                Our Father, Who art in heaven, Hallowed be Thy Name. Thy Kingdom come. Thy Will be done, on earth as it is in Heaven. Give us this day our daily bread. And forgive us our trespasses, as we forgive those who trespass against us. And lead us not into temptation, but deliver us from evil. Amen.
+              </div>
+              <h2>First three Hail Marys</h2>
+              <div class="MyText PFTHM">
+                The first three Hail Marys remind us of the three Virtues: <b>Faith</b>, <b>Hope</b>, and <b>Charity</b>, which allow us to share in God&apos;s nature.
+                <br> OR
+                For an increase in the virtue of: <b>Faith</b>, <b>Hope</b>, and <b>Charity</b>.
+              </div>
+              <h2>Hail Mary:</h2>
+              <div class="MyText PHM">
+                Hail Mary, full of grace, the Lord is with thee; Blessed art thou among women, and blessed is the fruit of thy womb, Jesus. Holy Mary, Mother of God, pray for us sinners, now and at the hour of our death. Amen.
+              </div>
+              <h2>Glory Be:</h2>
+              <div class="MyText PGB">
+                Glory Be, to the Father, and to the Son, and to the Holy Spirit.  As it was in the beginning, is now, and ever shall be, world without end. Amen.
+              </div>
+              <h2>Fatima Prayers</h2>
+              <div class="MyText PFP">
+                O My Jesus, forgive us our sins, save us from the fires of hell and lead all souls to heaven, especially those in most need of Thy mercy. Amen.
+              </div>
+              <h2>Hail Holy Queen</h2>
+              <div class="MyText PHHQ">
+                Hail, Holy Queen, Mother of mercy, our life, our sweetness, and our hope. To thee do we cry, poor banished children of Eve, to thee do we send up our sighs, mourning and weeping in this valley of tears. Turn then, most gracious advocate, thine eyes of mercy toward us; and after this our exile show unto us the blessed fruit of thy womb Jesus, O clement, O loving, O sweet Virgin Mary.
+                <br>
+                <i>Pray for us, O holy Mother of God</i>.** That we may be made worthy of the promises of Christ.
+                <br><i> Let us pray</i>  O God, whose only-begotten Son, by His life, death, and resurrection,
+                has purchased for us the rewards of eternal salvation; grant we beseech Thee, that meditating upon these mysteries of the most holy Rosary of the Blessed Virgin Mary, we may imitate what they contain and obtain what they promise. Through the same Christ our Lord. Amen.
+              </div>
+              <h2>Divine Assistance</h2>
+              <div class="MyText PDA">
+                <i>May Divine Assistance remain always with us</i>
+                <br>And may the souls of the faithful departed through the Mercy of God, rest in peace, Amen.
+              </div>
+              <h2>For the intentions of our Holy Father.</h2>
+              <div class="MyText PIHF">
+                Pray the Our Father, one Hail Mary, and the Glory Be.
+              </div>
+              <h2>Prayer to St Michael</h2>
+              <div class="MyText PSM">
+                St. Michael the Archangel, defend us in battle, be our protection against the wickedness and snares of the devil.  May God rebuke him we humbly pray; and do thou, O Prince of the Heavenly host, by the power of God, cast into hell Satan and all the evil spirits who prowl about the world seeking the ruin of souls. Amen.
+              </div>
+              <h2>Memorare:</h2>
+              <div class="MyText PM">
+                REMEMBER, O most gracious Virgin Mary, that never was it known that anyone who fled to thy protection, implored thy help, or sought thy intercession was left unaided. Inspired with this confidence, I fly to thee, O Virgin of virgins, my Mother; to thee do I come; before thee I stand, sinful and sorrowful. O Mother of the Word Incarnate, despise not my petitions, but in thy mercy hear and answer me. Amen.
+              </div>
+              <h2>Closing:</h2>
+              <div class="MyText PCL">
+                <i>Most Sacred Heart of Jesus ... </i>     Have Mercy on us.
+                <br><i>Immaculate Heart of Mary ...</i>   Pray for us.
+                <br><i>St Joseph ...</i>   Pray for us.
+                <br><i>St John the Evangelist ...</i>   Pray for us.
+                <br><i>May all the Angels and Saints in Heaven ...</i>   Pray for us.
+              </div>
+            </div>
+            <div class="MyPVersion MyPVersion2">
+              <h2>Imaculate Heart Chaplet</h2>
+              <div class="MyText">
+                First five beads, <b>Sign of the Cross</b> in veneration of the Saviour&apos;s 5 Holy Wounds.
+              </div>
+              <br>
+              <div class="MyText">
+                Large Beads - Sorrowful and Immaculate Heart of Mary, Pray for those who seek refuge in you.
+              </div>
+              <br>
+              <div class="MyText">
+                Small Beads - Holy Mother, save us through your Immaculate Heart&apos;s flame of love.
+              </div>
+              <br>
+              <div class="MyText">
+                Finish - Say 3 <b>Glory be</b>
+              </div>
+            </div>
+            <div class="MyPVersion MyPVersion3">
+              <h2>Divine Mercy Chaplet</h2>
+              <div class="MyText">
+                You expired, Jesus, but the source of life gushed forth for souls, and the ocean of mercy opened up for the whole world. O Fount of Life, unfathomable Divine Mercy, envelop the whole world and empty Yourself out upon us.
+                <br>
+                3 times - O Blood and Water, which gushed forth from the Heart of Jesus as a fountain of Mercy for us, I trust in You!
+              </div>
+              <br>
+              <div class="MyText">
+                First 3 beads - Our Father, Hail Mary, Apostle&apos;s Creed
+              </div>
+              <br>
+              <div class="MyText">
+                Large Beads - Eternal Father, I offer You the Body and Blood, Soul and Divinity of Your dearly beloved Son, Our Lord Jesus Christ, in atonement for our sins and those of the whole world.
+              </div>
+              <br>
+              <div class="MyText">
+                Small Beads - For the sake of His sorrowful Passion, have mercy on us and on the whole world.
+              </div>
+              <br>
+              <div class="MyText">
+                Conclusion - Holy God, Holy Mighty One, Holy Immortal One, have mercy on us and on the whole world. (Repeat three times)
+              </div>
+              <br>
+              <div class="MyText">
+                Optional - Eternal God, in Whom mercy is endless and the treasury of compassion is inexhaustible, look kindly upon us and increase Your mercy in us, that in difficult moments we might not despair nor become despondent, but with great confidence submit ourselves to Your holy will, which is Love and Mercy itself. Amen.
+              </div>
+            </div>
+          </div>
+          <div class="MyPage MyPage4">
+            <h1>Scriptual Rosary</h1>
+            <div class="MySubPage MySubPage1">
+              <h2>Joyful Mysteries</h2>
+              <div class="MyDecade MyDecade1">
+                <h3 class="PBD1"> The first Joyful Mystery - The Annunciation</h3>
+                <ol>
+                  <li class="MyText SBHM1">In the sixth month the angel Gabriel was sent from God to a city of Galilee named Nazareth, to a virgin betrothed to a man whose name was Joseph, and the virgin&apos;s name was Mary.  (Luke 1:26,27)
+                  <li class="MyText SBHM2">The Angel came to her and said, "Hail, O favored one, the Lord is with you!" (Luke 1:28)
+                  <li class="MyText SBHM3">Mary was greatly troubled at this saying, and considered in her mind what sort of greeting this might be.
+                    (Luke 1:29)
+                  <li class="MyText SBHM4">The angel said to her, "Do not be afraid, Mary, for you have found favor with God."
+                    (Luke 1:30)
+                  <li class="MyText SBHM5">"Behold, you will conceive in your womb and bear a son, and you shall call his name Jesus."
+                    (Luke 1:31)
+                  <li class="MyText SBHM6">"He will be great, and will be called the Son of the Most High; and the Lord God will give to him the throne of his father David, and he will reign over the house of Jacob for ever; and of his kingdom there will be no end."
+                    (Luke 1:32, 33)
+                  <li class="MyText SBHM7">And Mary said to the angel, "How shall this be, since I have no relations with a man?"
+                    (Luke 1:34)
+                  <li class="MyText SBHM8">And the angel said to her, "The Holy Spirit will come upon you, and the power of the Most High will overshadow you; therefore the child to be born will be called holy, the Son of God."
+                    (Luke 1:35)
+                  <li class="MyText SBHM9">"And behold, your kinswoman Elizabeth in her old age has also conceived a son; and this is the sixth month with her who was called barren.  For with God nothing will be impossible."
+                    (Luke 1:36, 37)
+                  <li class="MyText SBHM10">And Mary said, "Behold, I am the handmaid of the Lord; let it be done unto me according to thy word." And the angel departed from her.
+                    (Luke 1:38)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade2">
+                <h3 class="PBD2"> The second Joyful Mystery - The Visitation of Mary to Elizabeth</h3>
+                <ol>
+                  <li class="MyText SBHM1">In those days Mary arose and went with haste into the hill country, to a city of Judah, and she entered the house of Zechariah and greeted Elizabeth.
+                    (Luke l:39-40)
+                  <li class="MyText SBHM2">And when Elizabeth heard the greeting of Mary, the babe leaped in her womb; and Elizabeth was filled with the Holy Spirit.
+                    (Luke 1:41)
+                  <li class="MyText SBHM3">Elizabeth exclaimed with a loud cry, "Blessed are you among women, and blessed is the fruit of your womb!"
+                    (Luke 1:42)
+                  <li class="MyText SBHM4">"Blessed is she who believed that there would be a fulfillment of what was spoken to her from the Lord."
+                    (Luke 1:45)
+                  <li class="MyText SBHM5">And Mary said, "My soul proclaims the greatness of the Lord, my spirit rejoices in God my Savior, for he has looked with favor on his lowly servant."
+                    (Luke 1:46-48)
+                  <li class="MyText SBHM6">"From this day all generations will call me blessed: the Almighty has done great things for me, and holy is his Name!"
+                    (Luke 1:48, 49)
+                  <li class="MyText SBHM7">"He has mercy on those who fear him in every generation."
+                    (Luke l:50)
+                  <li class="MyText SBHM8">"He has shown the strength of his arm, he has scattered the proud in their conceit."
+                    (Luke l:51)
+                  <li class="MyText SBHM9">"He has cast down the mighty from their thrones, and has lifted up the lowly.  He has filled the hungry with good things, and the rich he has sent away empty."
+                    (Luke 1:52, 53)
+                  <li class="MyText SBHM10">"He has come to the help of his servant Israel, for he has remembered his promise of mercy, the promise he made to our fathers, to Abraham and his children for ever."
+                    (Luke 1:54, 55)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade3">
+                <h3 class="PBD3"> The third Joyful Mystery - The Nativity of  Our Lord</h3>
+                <ol>
+                  <li class="MyText SBHM1">Now Joseph went up from Galilee, from the city of Nazareth, to Judea, to the city of Bethlehem, to be enrolled with Mary, his betrothed, who was with child.  And while they were there, the time came for her to be delivered.
+                    (Luke 2:4-6)
+                  <li class="MyText SBHM2">She gave birth to her first-born son and wrapped him in swaddling clothes.
+                    (Luke 2:7)
+                  <li class="MyText SBHM3">She laid him in a manger, because there was no place for them in the inn.
+                    (Luke 2:7)
+                  <li class="MyText SBHM4">In that region there were shepherds out in the field, keeping watch over their flock by night.  And an angel of the Lord appeared to them, and the glory of the Lord shone around them, and they were filled with fear.
+                    (Luke 2:8- 9)
+                  <li class="MyText SBHM5">And the angel said to them, "Be not afraid; for behold, I bring you good news of a great joy which will come to all the people"
+                    (Luke 2:10)
+                  <li class="MyText SBHM6">"To you is born this day in the city of David a Savior, who is Christ the Lord."
+                    (Luke 2:11)
+                  <li class="MyText SBHM7">And suddenly there was with the angel a multitude of the heavenly host praising God and saying, "Glory to God in the highest, and on earth peace among men with whom he is pleased!"
+                    (Luke 2:13-14)
+                  <li class="MyText SBHM8">And behold, wise men came from the east, ... and going in they saw the child with Mary his mother.
+                    (Matt 2:1, 11)
+                  <li class="MyText SBHM9">They fell down and worshiped him.  Then, opening their treasures, they offered him gifts, gold and frankincense and myrrh.
+                    (Matt 2:11)
+                  <li class="MyText SBHM10">And Mary kept in mind all these things and pondered them in her heart.
+                    (Luke 2:19)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade4">
+                <h3 class="PBD4"> The fourth Joyful Mystery - The Presentation at the Temple</h3>
+                <ol>
+                  <li class="MyText SBHM1">At the end of eight days, when he was circumcised, he was called Jesus, the name given by the angel before he was conceived in the womb.  And when the time came for their purification according to the law of Moses, they brought him up to Jerusalem to present him to the Lord.
+                    (Luke 2:21, 22)
+                  <li class="MyText SBHM2">Now there was a man in Jerusalem, whose name was Simeon, and this man was righteous and devout, looking for the consolation of Israel, and the Holy Spirit was upon him.
+                    (Luke 2:25)
+                  <li class="MyText SBHM3">It had been revealed to him by the Holy Spirit that he should not see death before he had seen the Lord&apos;s Christ.
+                    (Luke 2:26)
+                  <li class="MyText SBHM4">Inspired by the Spirit he came into the temple; and when the parents brought in the child Jesus, ... he took him up in his arms and blessed God.
+                    (Luke 2:27, 28)
+                  <li class="MyText SBHM5">"Lord, now let thy servant depart in peace, according to thy word,"
+                    (Luke 2:29)
+                  <li class="MyText SBHM6">"...for my eyes have seen thy salvation which thou hast prepared in the presence of all peoples."
+                    (Luke 2:30,31)
+                  <li class="MyText SBHM7">"A light for revelation to the Gentiles, and for glory to thy people Israel."
+                    (Luke 2:32)
+                  <li class="MyText SBHM8">Simeon blessed them and said to Mary his mother, "Behold, this child is set for the fall and rising of many in Israel, and for a sign that is spoken against."
+                    (Luke 2:34)
+                  <li class="MyText SBHM9">"...and a sword will pierce through your own soul also, that thoughts out of many hearts may be revealed."
+                    (Luke 2:35)
+                  <li class="MyText SBHM10">And when they had performed everything according to the law of the Lord, they returned into Galilee, to their own city, Nazareth.  And the child grew and became strong, filled with wisdom; and the favor of God was upon him.
+                    (Luke 2:39, 40)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade5">
+                <h3 class="PBD5"> The fifth Joyful Mystery - Jesus is found in the Temple</h3>
+                <ol>
+                  <li class="MyText SBHM1">Now His parents went to Jerusalem every year at the feast of the Passover.  And when he was twelve years old, they went up according to custom.
+                    (Luke 2:41, 42)
+                  <li class="MyText SBHM2">When the feast was ended, as they were returning, the boy Jesus stayed behind in Jerusalem. His parents did not know it
+                    (Luke 2:43)
+                  <li class="MyText SBHM3">Supposing him to be in the company they went a day&apos;s journey, and they sought him among their kinsfolk and acquaintances; and when they did not find him, they returned to Jerusalem, seeking him.
+                    (Luke 2:44, 45)
+                  <li class="MyText SBHM4">After three days they found him in the temple, sitting among the teachers, listening to them and asking them questions.
+                    (Luke 2:46)
+                  <li class="MyText SBHM5">All who heard him were amazed at his understanding and his answers.
+                    (Luke 2:47)
+                  <li class="MyText SBHM6">And when they saw him they were astonished; and his mother said to him, "Son, why have you treated us so?  Behold, your father and I have been looking for you anxiously."
+                    (Luke 2:48)
+                  <li class="MyText SBHM7">And he said to them, "How is it that you sought me? Did you not know that I must be in my Father&apos;s house?"
+                    (Luke 2:49)
+                  <li class="MyText SBHM8">But they did not understand the saying which he spoke to them.
+                    (Luke 2:50)
+                  <li class="MyText SBHM9">He went down with them and came to Nazareth, and was obedient to them; and his mother kept all these things in her heart.
+                    (Luke 2:51)
+                  <li class="MyText SBHM10">And Jesus increased in wisdom, and in stature, and in favor with God and men.
+                    (Luke 2:52)
+                </ol>
+              </div>
+            </div>
+            <div class="MySubPage MySubPage2">
+              <h2>Luminous Mysteries</h2>
+              <div class="MyDecade MyDecade1">
+                <h3 class="PBD1"> First Luminous Mystery - The Baptism of Our Lord</h3>
+                <ol>
+                  <li class="MyText SBHM1">Isaiah prophesied: "Here is my servant whom I uphold, my chosen one with whom I am pleased.  Upon him I have put my spirit; he shall bring forth justice to the nations."
+                    (Isaiah 42: 1)
+                  <li class="MyText SBHM2">He will not cry out, nor shout, nor make his voice heard in the street.  A bruised reed he will not break, and a dimly burning wick he will not quench.  He will faithfully bring forth justice.
+                    (Isaiah 42:2-3)
+                  <li class="MyText SBHM3">Now John the Baptist appeared in the wilderness of Judea, proclaiming, "Repent, for the kingdom of heaven has come near. " This is the one of whom the prophet Isaiah spoke when he said, "The voice of one crying out in the wilderness: Prepare the way of the Lord, make his paths straight. '"
+                    (Matthew 3:1-2)
+                  <li class="MyText SBHM4">John wore clothing of camel&apos;s hair with a leather belt around his waist, and his food was locusts and wild honey.  The people of Jerusalem and all Judea were going out to him with all the region along the Jordan, and they were baptized by him in the river Jordan, confessing their sins.
+                    (Matthew 3:4-6)
+                  <li class="MyText SBHM5">He saw many Pharisees and Sadducees coming for baptism, and he said to them, `You brood of vipers! Who warned you to flee from the wrath to come?  Bear fruit worthy of repentance.
+                    (Matthew 3:7-8)
+                  <li class="MyText SBHM6">I baptize you with water for repentance, but one who is more powerful than I is coming after me; I am not worthy to carry his sandals.  He will baptize you with the Holy Spirit and fire.
+                    (Matthew 3:11)
+                  <li class="MyText SBHM7">His winnowing-fork is in his hand, and he will clear his threshing-floor and will gather his wheat into the granary; but the chaff he will burn with unquenchable fire.
+                    (Matthew 3:12)
+                  <li class="MyText SBHM8">Then Jesus came from Galilee to John at the Jordan, to be baptized by him.  John would have prevented Him, saying, "I need to be baptized by you, and do you come to me?"
+                    (Matthew 3:13-14)
+                  <li class="MyText SBHM9">But Jesus answered him, "Let it be so now; for it is proper for us in this way to fulfill all righteousness." Then he consented.
+                    (Matthew 3:15)
+                  <li class="MyText SBHM10">When Jesus had been baptized, as He came up from the water suddenly the heavens were opened to Him and He saw the Spirit of God descending like a dove and alighting on Him.  And a voice from heaven said, "This is my Son, the Beloved, with whom I am well pleased."
+                    (Matthew: 3:16-17)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade2">
+                <h3 class="PBD2"> Second Luminous Mystery - The First Miracle of Jesus at the wedding in Cana</h3>
+                <ol>
+                  <li class="MyText SBHM1">On the third day there was a wedding in Cana of Galilee, and the mother of Jesus was there.  Jesus and His disciples had also been invited to the wedding.
+                    (John 2:1-2)
+                  <li class="MyText SBHM2">When the wine ran short, the mother of Jesus said to Him, "They have no wine."
+                    (John 2:3)
+                  <li class="MyText SBHM3">Jesus said to her, "Woman, what concern is this to us?  My hour has not yet come."
+                    (John 2:4)
+                  <li class="MyText SBHM4">His mother said to the servants, "Do whatever He tells you."
+                    (John 2:5)
+                  <li class="MyText SBHM5">Now standing there were six stone water jars for the Jewish rites of purification, each holding twenty or thirty gallons.
+                    (John 2:6)
+                  <li class="MyText SBHM6">Jesus told them, "Fill the jars with water." So they filled them to the brim.
+                    (John 2:7)
+                  <li class="MyText SBHM7">Then He told them, "Draw some out now and take it to the headwaiter." So they took it.
+                    (John 2:8)
+                  <li class="MyText SBHM8">And when the headwaiter tasted the water that had become wine, without knowing where it came from (although the servers who had drawn the water knew), the headwaiter called the bridegroom.
+                    (John 2:9)
+                  <li class="MyText SBHM9">[The headwaiter] said to him, "Everyone serves good wine first, and then when people have drunk freely, an inferior one; but you have kept the good wine until now."
+                    (John 2:10)
+                  <li class="MyText SBHM10">Jesus did this as the beginning of His signs in Cana in Galilee and so revealed His glory, and His disciples began to believe in him.
+                    (John 2:11)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade3">
+                <h3 class="PBD3">Third Luminous Mystery - The Proclamation of the Kingdom of Heaven</h3>
+                <ol>
+                  <li class="MyText SBHM1">When Jesus saw the crowds, He went up the mountain; and after He sat down, his disciples came to Him.
+                    (Matthew 5:1-2)
+                  <li class="MyText SBHM2">Then began to teach them, saying, "Blessed are the poor in spirit, for theirs is the kingdom of heaven."
+                    (Matthew 5:3)
+                  <li class="MyText SBHM3">"Blessed are those who mourn, for they will be comforted."
+                    (Matthew 5:4)
+                  <li class="MyText SBHM4">"Blessed are the meek, for they will inherit the land."
+                    (Matthew 5:5)
+                  <li class="MyText SBHM5">"Blessed are those who hunger and thirst for righteousness, for they will be satisfied."
+                    (Matthew 5:6)
+                  <li class="MyText SBHM6">"Blessed are the merciful, for they will be shown mercy."
+                    (Matthew 5:7)
+                  <li class="MyText SBHM7">"Blessed are the clean in heart, for they will see God."
+                    (Matthew 5:8)
+                  <li class="MyText SBHM8">"Blessed are the peacemakers, for they will be called children of God."
+                    (Matthew 5:9)
+                  <li class="MyText SBHM9">"Blessed are those who are persecuted for righteousness' sake, for theirs is the kingdom of heaven."
+                    (Matthew 5:10)
+                  <li class="MyText SBHM10">"Blessed are you when people revile you and persecute you and utter all kinds of evil against you falsely because of me. Rejoice and be glad, for your reward is great in heaven, for in the same way they persecuted the prophets who were before you."
+                    (Matthew 5:11-12)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade4">
+                <h3 class="PB4"> Fourth Luminous Mystery - The Transfiguration</h3>
+                <ol>
+                  <li class="MyText SBHM1">Once when Jesus was praying alone, with only the disciples near Him, He asked them, `Who do the crowds say that I am?'  They answered, `John the Baptist; but others, Elijah; and still others, that one of the ancient prophets has arisen.'  He said to them, `But who do you say that I am?' Peter answered, `The Messiah of God.'
+                    (Luke 9:18-20)
+                  <li class="MyText SBHM2">Then He said to all, "If anyone wishes to come after me, he must deny himself and take up his cross daily and follow me. For whoever wishes to save his life will lose it, but whoever loses his life for my sake will save it."
+                    (Luke 9:23-24)
+                  <li class="MyText SBHM3">Now about eight days after He said this, Jesus took with him Peter and John and James, and went up on the mountain to pray.
+                    (Luke 9:28)
+                  <li class="MyText SBHM4">And while He was praying, the appearance of his face changed, and His clothes became dazzling white.
+                    (Luke 9:29)
+                  <li class="MyText SBHM5">And behold, two men were conversing with Him, Moses and Elijah who appeared in glory and spoke of His exodus that He was going to accomplish in Jerusalem.
+                    (Luke 9:30-31)
+                  <li class="MyText SBHM6">Peter and his companions had been overcome by sleep, but becoming fully awake, they saw His glory and the two men standing with Him.
+                    (Luke 9:32)
+                  <li class="MyText SBHM7">As they were about to part from Him, Peter said to Jesus, "Master, it is good that we are here; let us make three tents, one for you, one for Moses, and one for Elijah." But he did not know what he was saying.
+                    (Luke 9:33)
+                  <li class="MyText SBHM8">While he was saying this, a cloud came and overshadowed them; and they were terrified as they entered the cloud.
+                    (Luke 9:34)
+                  <li class="MyText SBHM9">Then from the cloud came a voice that said, "This is my chosen Son; listen to him."
+                    (Luke 9:35)
+                  <li class="MyText SBHM10">When the voice had spoken, Jesus was found alone. And they kept silent and in those days told no one any of the things they had seen.
+                    (Luke 9:36)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade5">
+                <h3 class="PBD5"> Fifth Luminous Mystery - The Institution of the Holy Eucharist</h3>
+                <ol>
+                  <li class="MyText SBHM1">Jesus said to them, "Amen, amen, I say to you, unless you eat the flesh of the Son of Man and drink his blood, you do not have life within you."
+                    (John 6:53)
+                  <li class="MyText SBHM2">The Jews quarreled among themselves, saying, "How can this man give us [his] flesh to eat?"
+                    (John 6:52)
+                  <li class="MyText SBHM3">This is the bread that came down from heaven. Unlike your ancestors who ate and still died, whoever eats this bread will live forever.
+                    (John 6:58)
+                  <li class="MyText SBHM4">When the day of the Feast of Unleavened Bread arrived, the day for sacrificing the Passover lamb, He sent out Peter and John, instructing them, "Go and make preparations for us to eat the Passover."
+                    (Luke 22:7-8)
+                  <li class="MyText SBHM5">They asked Him, "Where do you want us to make the preparations?" And He answered them, "When you go into the city, a man will meet you carrying a jar of water. Follow him into the house that he enters and say to the master of the house, 'The teacher says to you, where is the guest room where I may eat the Passover with my disciples?'"
+                    (Luke 22:9-11)
+                  <li class="MyText SBHM6">He will show you a large upper room that is furnished. Make the preparations there.  So they went and found everything as He had told them; and they prepared the Passover meal.
+                    (Luke 22:12-13)
+                  <li class="MyText SBHM7">When the hour came, He took his place at the table, and the apostles with Him.  He said to them, "I have eagerly desired to eat this Passover with you before I suffer, for, I tell you, I shall not eat it again until there is fulfillment in the kingdom of God."
+                    (Luke 22:14-16)
+                  <li class="MyText SBHM8">Then He took the bread, said the blessing, broke it, and gave it to them, saying, "This is my body, which will be given for you; do this in memory of me."
+                    (Luke 22:19)
+                  <li class="MyText SBHM9">And likewise the cup after they had eaten, saying, "This cup is the new covenant in my blood, which will be shed for you."
+                    (Luke 22:20)
+                  <li class="MyText SBHM10">And yet behold, the hand of the one who is to betray me is with me on the table; for the Son of Man indeed goes as it has been determined; but woe to that man by whom he is betrayed. And they began to debate among themselves who among them would do such a deed.
+                    (Luke 22:21-23)
+                </ol>
+              </div>
+            </div>
+            <div class="MySubPage MySubPage3">
+              <h2>Sorrowful Mysteries</h2>
+              <div class="MyDecade MyDecade1">
+                <h3 class="PBD1">First Sorrowful Mystery - The Agony in the Garden</h3>
+                <ol>
+                  <li class="MyText SBHM1">Jesus came with them to Gethsemane.  And sadness overcame him, with great distress.
+                    (Matt 26; 36-37)
+                  <li class="MyText SBHM2">Then he said, 'My soul is sorrowful to the point of death.  Wait here and keep awake with me.'
+                    (Matt 26: 38)
+                  <li class="MyText SBHM3">Going a little farther he fell on his face and prayed, "My Father, if it be possible, let this cup pass from me; nevertheless, not as I will, but as You will."
+                    (Matt 26: 39)
+                  <li class="MyText SBHM4">And he came to the disciples and found them sleeping; and he said to Peter, "So, could you not watch with me one hour?"
+                    (Matt 26: 40)
+                  <li class="MyText SBHM5">Watch and pray that you may not enter into temptation; the spirit indeed is willing, but the flesh is weak.
+                    (Matt 26: 41)
+                  <li class="MyText SBHM6">Again, for the second time, he went away and prayed, "My Father, if this cup cannot pass unless I drink it, thy will be done."
+                    (Matt 26: 42)
+                  <li class="MyText SBHM7">And again he came and found them sleeping, for their eyes were heavy.  So, leaving them again, he went away and prayed for the third time, saying the same words.
+                    (Matt 26: 43-44)
+                  <li class="MyText SBHM8">Then he came to the disciples and said to them, "Are you still sleeping and taking your rest? Behold, the hour is at hand, and the Son of man is betrayed into the hands of sinners.  Rise, let us be going; see, my betrayer is at hand."
+                    (Matt 26: 45-46)
+                  <li class="MyText SBHM9">While he was still speaking, Judas came, ... and with him a great crowd with swords and clubs, from the chief priests and the elders of the people...  And he came up to Jesus at once and said, "Hail, Master!" And he kissed him.
+                    (Matt 26: 47, 49)
+                  <li class="MyText SBHM10">Jesus said to him, "Judas, would you betray the Son of man with a kiss?"
+                    (Luke 22: 48)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade2">
+                <h3 class="PBD2">Second Sorrowful Mystery - The Scourging at the Pillar</h3>
+                <ol>
+                  <li class="MyText SBHM1">They had Jesus bound and handed him over to Pilate.  Pilate questioned him, 'Are you the king of the Jews?'
+                    (Mark 15:1-2)
+                  <li class="MyText SBHM2">Jesus answered, "My kingship is not of this world; if my kingship were of this world, my servants would fight, that I might not be handed over to the Jews; but my kingship is not from the world."
+                    (John 18: 36)
+                  <li class="MyText SBHM3">Pilate said to him, "So you are a king?" Jesus answered, "You say that I am a king. For this I was born, and for this I have come into the world, to bear witness to the truth. Everyone who is of the truth hears my voice."
+                    (John 18: 37)
+                  <li class="MyText SBHM4">'Truth?' said Pilate, 'What is that?' and with that he went out again to the Jews and said, "I find no case against him."
+                    (John 18:38)
+                  <li class="MyText SBHM5">Pilate then had Jesus taken away and scourged.
+                    (John 19: 1)
+                  <li class="MyText SBHM6">Despised and rejected by men, a man of sorrows.
+                    (Isaiah 53; 3)
+                  <li class="MyText SBHM7">Harshly dealt with he bore it humbly, like a lamb that is led to the slaughter house.
+                    (Isaiah 53: 7)
+                  <li class="MyText SBHM8">Yet he was pierced through for our faults, crushed for our sins.
+                    (Isaiah 53: 5a)
+                  <li class="MyText SBHM9">Ours were the sufferings he bore, ours the sorrows he carried.
+                    (Isaiah 53: 4)
+                  <li class="MyText SBHM10">On him lies a punishment that brings us peace, and through his wounds we are healed.
+                    (Isaiah 53: 5b)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade3">
+                <h3 class="PBD3">Third Sorrowful Mystery - The Crowning with Thorns</h3>
+                <ol>
+                  <li class="MyText SBHM1">The soldiers led him away to the Praetorium.  They stripped him and put a scarlet robe upon him.
+                    (Mk 15: 16-17)
+                  <li class="MyText SBHM2">And twisting some thorns into a crown they put it on his head and placed a reed in his right hand.
+                    (Matt 27: 29)
+                  <li class="MyText SBHM3">Kneeling before him they mocked him, saying, "Hail, King of the Jews!"
+                    (Matt 27: 29)
+                  <li class="MyText SBHM4">And they spat on him and took the reed and struck him on the head.
+                    (Matt 27: 30)
+                  <li class="MyText SBHM5">Then Pilate took some water, washed his hands in front of the crowd and said, "I am innocent of this man's blood.  It is your concern."
+                    (Matt 27: 24)
+                  <li class="MyText SBHM6">Jesus was brought out wearing the crown of thorns and the purple robe.
+                    (John 19: 5)
+                  <li class="MyText SBHM7">"Behold your king" said Pilate.  "Take him away!" they said.  "Crucify him!"
+                    (John 19: 14-15)
+                  <li class="MyText SBHM8">"Why, what harm has he done?" But they shouted all the louder crucify him!
+                    (Mark 15: 14)
+                  <li class="MyText SBHM9">"Do you want me to crucify your king?"  The chief priests answered, "We have no king except Caesar."
+                    (John 19:15)
+                  <li class="MyText SBHM10">So Pilate, anxious to placate the crowd, handed him over to be crucified.
+                    (Mark 15: 15)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade4">
+                <h3 class="PBD4">Fourth Sorrowful Mystery - The Carrying of the Cross</h3>
+                <ol>
+                  <li class="MyText SBHM1">"If anyone wants to be a follower of mine, let him renounce himself."
+                    (Luke 9: 23)
+                  <li class="MyText SBHM2">"Let him take up his cross every day and follow me."
+                    (Luke 9: 23)
+                  <li class="MyText SBHM3">They took Jesus, and he went out, bearing his own cross, to the place called the place of a skull, which is called in Hebrew Gol&apos;gotha.
+                    (Jn 19: 17)
+                  <li class="MyText SBHM4">As they went out, they came upon a man of Cyre&apos;ne, Simon by name; this man they compelled to carry his cross.
+                    (Matt 27: 32)
+                  <li class="MyText SBHM5">"Shoulder my yoke and learn from me."
+                    (Matt 11: 29)
+                  <li class="MyText SBHM6">"For I am gentle and humble in heart."
+                    (Matt 11: 29)
+                  <li class="MyText SBHM7">"And you will find rest for your souls.  For my yoke is easy and my burden light."
+                    (Matt 11: 29-30)
+                  <li class="MyText SBHM8">There followed him a great multitude of people, with women who bewailed and lamented him.
+                    (Luke 23: 27)
+                  <li class="MyText SBHM9">But Jesus turned to them and said, 'Daughters of Jerusalem, do not weep for me; weep rather for yourselves and for your children.'
+                    (Luke 23: 28)
+                  <li class="MyText SBHM10">"For if they do this when the wood is green, what will happen when it is dry?"
+                    (Luke 23: 31)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade5">
+                <h3 class="PBD5">Fifth Sorrowful Mystery - The Crucifixion of Jesus</h3>
+                <ol>
+                  <li class="MyText SBHM1">When they came to the place called the Skull, they crucified him and the criminals there, one on His right, the other on His left.
+                    (Luke 23:33)
+                  <li class="MyText SBHM2">Jesus said, 'Father, forgive them; they do not know what they are doing.'
+                    (Luke 23: 34a)
+                  <li class="MyText SBHM3">They divided His garments by casting lots
+                    (Lk 23: 34b)
+                  <li class="MyText SBHM4">The people stood by and watched; the rulers, meanwhile, sneered at Him and said "He saved others, let Him save Himself if He is the chosen one, the Messiah of God"
+                    (Luke 23: 35)
+                  <li class="MyText SBHM5">Above Him there was an inscription that read, "This is the King of the Jews."
+                    (John 19: 25-26)
+                  <li class="MyText SBHM6">Near the cross of Jesus stood his mother and the disciple he loved.
+                    (John 19: 25-26)
+                  <li class="MyText SBHM7">Jesus said to his mother, 'Woman, behold your son.'  Then to the disciple he said, 'Behold your mother.'  From that moment the disciple made a place for her in his home.
+                    (John 19: 26-27)
+                  <li class="MyText SBHM8">It was now about noon, and a darkness came over the whole land until three in the afternoon...Then the veil of the Temple was torn down the middle.
+                    (Lk 23: 44-45)
+                  <li class="MyText SBHM9"> Jesus cried out in a loud voice, 'Father, into your hands I commend my spirit'; and when He had said this, He breathed His last
+                    (Luke 23: 46)
+                  <li class="MyText SBHM10">The centurion who witnessed what had happened glorified God and said "This man was innocent beyond doubt."
+                    (Lk 23: 47)
+                </ol>
+              </div>
+            </div>
+            <div class="MySubPage MySubPage4">
+              <h2>Glorious Mysteries</h2>
+              <div class="MyDecade MyDecade1">
+                <h3 class="PBD1">The First Glorious Mystery - The Resurrection of Jesus</h3>
+                <ol>
+                  <li class="MyText SBHM1">'I tell you most solemnly, you will be sorrowful, but your sorrow will turn into joy.'
+                    (John 16:20)
+                  <li class="MyText SBHM2">'For I shall see you again, and your hearts will be full of joy, and that joy no one shall take from you.'
+                    (John 16:22)
+                  <li class="MyText SBHM3">After the sabbath, as the first day of the week was dawning, Mary Magdalene and the other Mary came to see the tomb.
+                    (Matt 28:1)
+                  <li class="MyText SBHM4">And behold, there was a great earthquake; for an angel of the Lord descended from heaven, approached, rolled back the stone, and sat upon it.
+                    (Matt 28:2)
+                  <li class="MyText SBHM5">His appearance was like lightning and his clothing was white as snow.  The guards were shaken with fear of him and became like dead men.
+                    (Matt 28:3-4)
+                  <li class="MyText SBHM6">Then the angel said to the women, "Do not be afraid! I know that you are seeking Jesus the crucified.  He is not here, for he has been raised just as he said. Come and see the place where he lay."
+                    (Matt 28:5-6)
+                  <li class="MyText SBHM7">Go quickly and tell his disciples, 'He has been raised from the dead, and he is going before you to Galilee; there you will see him.'
+                    (Matt 28:7)
+                  <li class="MyText SBHM8">Then they went away quickly from the tomb, fearful yet overjoyed, and ran to announce this to his disciples.
+                    (Matt 28:8)
+                  <li class="MyText SBHM9">'I am the resurrection and the life.  If anyone believes in me, even though he dies he will live.'
+                    (John 11:25)
+                  <li class="MyText SBHM10">'And whoever lives and believes in me will never die.'
+                    (John 11:26)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade2">
+                <h3 class="PBD2">Second Glorious Mystery - THE ASCENSION</h3>
+                <ol>
+                  <li class="MyText SBHM1">Jesus took them out as far as the outskirts of Bethany, and lifting up his hands he blessed them.
+                    (Luke 24:50)
+                  <li class="MyText SBHM2">He said, 'All authority in heaven and on earth has been given to me.'
+                    (Matt 28:18)
+                  <li class="MyText SBHM3">'Go, therefore, make disciples of all the nations.'
+                    (Matt 28:19)
+                  <li class="MyText SBHM4">'Baptize them in the name of the Father and of the Son and of the Holy Spirit.'
+                    (Matt 28:19)
+                  <li class="MyText SBHM5">'And teach them to observe all the commands I gave you.'
+                    (Matt 28:20)
+                  <li class="MyText SBHM6">'He who believes and is baptized will be saved.'
+                    (Mark 16:16)
+                  <li class="MyText SBHM7">'He who does not believe will be condemned.'
+                    (Mark 16:16)
+                  <li class="MyText SBHM8">'And know that I am with you always; yes, to the end of time.'
+                    (Matt 28:20)
+                  <li class="MyText SBHM9">As he said this he was lifted up, and a cloud took him from their sight.
+                    (Acts 1:9)
+                  <li class="MyText SBHM10">And so the Lord Jesus was taken up into heaven: there at the right hand of God he took his place.
+                    (Mark 16:19)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade3">
+                <h3 class="PBD3">Third Glorious Mystery - THE DESCENT OF THE HOLY SPIRIT</h3>
+                <ol>
+                  <li class="MyText SBHM1">When the time for Pentecost was fulfilled, they were all in one place together.
+                    (Acts 2:1)
+                  <li class="MyText SBHM2">And suddenly there came from the sky a noise like a strong driving wind,* and it filled the entire house in which they were.
+                    (Acts 2:2)
+                  <li class="MyText SBHM3">Then there appeared to them tongues as of fire,* which parted and came to rest on each one of them.
+                    (Acts 2:3)
+                  <li class="MyText SBHM4">And they were all filled with the holy Spirit and began to speak in different tongues,* as the Spirit enabled them to proclaim.
+                    (Acts 2:4)
+                  <li class="MyText SBHM5">Now, there were devout men living in Jerusalem from every nation under heaven.  At this sound, they gathered in a large crowd, but they were confused because each one heard them speaking in his own language.
+                    (Acts 2:5-6)
+                  <li class="MyText SBHM6">And Peter stood up with the Eleven and addressed them with a loud voice.
+                    (Acts 2:14)
+                  <li class="MyText SBHM7">"Repent and be baptized, every one of you, in the name of Jesus Christ for the forgiveness of your sins; and you will receive the gift of the holy Spirit."
+                    (Acts 2:38)
+                  <li class="MyText SBHM8">He testified with many other arguments, and was exhorting them, "Save yourselves from this corrupt generation."  Those who accepted his message were baptized, and about three thousand persons were added that day.
+                    (Acts 2:40-41)
+                  <li class="MyText SBHM9">Send forth your Spirit, and they shall be created; and you shall renew the face of the earth.
+                    (Pentecost Alleluia)
+                  <li class="MyText SBHM10">Come, Holy Spirit, fill the hearts of your faithful: and kindle in them the fire of your love.
+                    (Pentecost Alleluia)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade4">
+                <h3 class="PBD4">Fourth Glorious Mystery - The Assumption of Mary</h3>
+                <ol>
+                  <li class="MyText SBHM1">'Come then my love, my lovely one, come.'
+                    (Song 2:10)
+                  <li class="MyText SBHM2">'For see, winter is past, the rains are over and gone.'
+                    (Song 2:11)
+                  <li class="MyText SBHM3">'Show me your face, let me hear your voice; for your voice is sweet and your face is beautiful.'
+                    (Song 2:14)
+                  <li class="MyText SBHM4">And the sanctuary of God in heaven opened.  Then came loud flashes of lightning and peals of thunder.
+                    (Rev 11:19)
+                  <li class="MyText SBHM5">Now a great sign appeared in heaven: a woman, adorned with the sun.
+                    (Rev 12:1)
+                  <li class="MyText SBHM6">She was standing on the moon, with the twelve stars on her head for a crown.
+                    (Rev 12:1)
+                  <li class="MyText SBHM7">All glorious is the king&apos;s daughter as she enters, her raiment threaded with gold; In embroidered apparel she is led to the king.
+                    (Psalm 45:13,14)
+                  <li class="MyText SBHM8">May you be blessed, my daughter, by God Most High, beyond all women on earth.
+                    (Judith 13:23)
+                  <li class="MyText SBHM9">The trust you have shown shall not pass from the memories of men, but shall ever remind them of the power of God.
+                    (Judith 13:25)
+                  <li class="MyText SBHM10">You are the glory of Jerusalem!  You are the great pride of Israel!  You are the highest honor of our people!
+                    (Judith 15:10)
+                </ol>
+              </div>
+              <div class="MyDecade MyDecade5">
+                <h3 class="PBD5">Fifth Glorious Mystery - The Coronation of Mary</h3>
+                <ol>
+                  <li class="MyText SBHM1">Who is this arising like the dawn, fair as the moon, resplendent as the sun?
+                    (Song 6:10)
+                  <li class="MyText SBHM2">Like the rainbow gleaming against brilliant clouds, like blossoms in the days of spring.
+                    (Ecclus 50:7,8)
+                  <li class="MyText SBHM3">'I am the rose of Sharon, I am the lily of the valleys.'
+                    (Song 2:1)
+                  <li class="MyText SBHM4">'My throne is in a pillar of cloud, and for eternity I shall remain.'
+                    (Ecclus 24:4,9)
+                  <li class="MyText SBHM5">'Approach me, you who desire me, and take your fill of my fruits.'
+                    (Ecclus 24:19)
+                  <li class="MyText SBHM6">'I am like a vine putting out graceful shoots, my blossoms are sweeter than honey.'
+                    (Ecclus 24:17,20)
+                  <li class="MyText SBHM7">'And now, my children, listen to me; listen to instruction and learn to be wise.'
+                    (Prov 8:32,33)
+                  <li class="MyText SBHM8">'Happy are those who keep my ways, who day after day watch my gates.'
+                    (Prov 8:32,34)
+                  <li class="MyText SBHM9">'For those who find me find life, and win favor from the Lord.'
+                    (Prov 8:35)
+                  <li class="MyText SBHM10">Hail Queen of mercy, protect us from the enemy, and receive us at the hour of death.
+                    (Queenship of the B.V.M., Gradual)
+                </ol>
+              </div>
+            </div>
+          </div>
+          <div class="MyPage MyPage3">
+            <div class="dropdown MySubPage MySubPage1 MySubPage2 MySubPage3 MySubPage4" style="float:right" id="PrayerSet">
+              <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Prayer Set</button>
+              <ul class="dropdown-menu">
+                <li><button type="button" onclick="SelectVersion(1)" class="btn btn-success MyVersionSel MyVersionSel1">Traditional</button></li>
+                <li><button type="button" onclick="SelectVersion(2)" class="btn btn-success  MyVersionSel MyVersionSel2">I Desire</button></li>
+                <li><button type="button" onclick="SelectVersion(3)" class="btn btn-success  MyVersionSel MyVersionSel3">Fruits</button></li>
+                <li><button type="button" onclick="SelectVersion(4)" class="btn btn-success  MyVersionSel MyVersionSel4">World Missionary</button></li>
+              </ul>
+            </div>
+            <h1>Mysteries of the Rosary</h1>
+            <div class="MySubPage MySubPage1">
+              <h2>The Joyful Mysteries: (Mondays and Saturdays)</h2>
+              <div class="MyVersion MyVersion1">
+                <ol>
+                  <li class="MyText PBD1"> The Annunciation of the Lord:
+                    <br>The angel Gabriel was sent from God to a city of Galilee named Nazareth, to a virgin betrothed to a man whose name was Joseph... And he came to her and said, "Hail, 0 favored one, the Lord is with you!" -- Luke 1:26-28
+                  <li class="MyText PBD2">The Visitation:
+                    <br>In those days Mary arose and went with haste into the hill country, to a city of Judah... And when Elizabeth heard the greeting of Mary, the babe leaped in her womb. -- Luke 1:39-41
+                  <li class="MyText PBD3">The Nativity of the Lord:
+                    <br>And she gave birth to her first-born son and wrapped him in swaddling cloths, and laid him in a manger, because there was no place for them in the inn. -- Luke 2:7
+                  <li class="MyText PBD4">The Presentation of the Lord:
+                    <br>And when the parents brought in the child Jesus ... he took him up in his arms and blessed God and said, "Lord, now lettest thou thy servant depart in peace, according to thy word; for mine eyes have seen thy salvation." -- Luke 2:27-30
+                  <li class="MyText PBD5">The Finding in the Temple:
+                    <br>After three days they found him in the temple, sitting among the teachers, listening to them and asking them questions; and all who heard him were amazed. -- Luke 2:45-47
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion2">
+                <ol>
+                  <li class="MyText PBD1">The Annunciation - I desire the love of Humility
+                    <br>Think of the humility of the Blessed Virgen when the Angel Gabriel greeted her with these words: "Hail, full of grace."
+                  <li class="MyText PBD2">The Visitation - I desire charity towards My Neighbor
+                    <br>Think of the humility of Mary&apos;s charity in visiting her cousin Elizabeth and remaining with her for three months before the birth of John the Baptist.
+                  <li class="MyText PBD3">The Nativity of the Lord - I desire for Love of God and to end of Poverty
+                    <br>Think of the poverty, so lovingly accepted by Mary when she placed the Infant Jesus, our God and Redeemer, in a manger in the stable of Bethlehem.
+                  <li class="MyText PBD4">The Presentation -  I desire for a Spirit of Sacrifice
+                    <br>Think of Mary&apos;s obedience to the law of God in presenting the Child Jesus in the temple.
+                  <li class="MyText PBD5">Finding of the Child Jesus in the Temple - I desire for Zeal for the Glory of God
+                    <br>Think of the deep sorrow with which Mary sought the Child Jesus for three days, and the joy with which she found Him in the midst of the Teachers in the Temple.
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion3">
+                <ol>
+                  <li class="MyText PBD1">The Annunciation - The Fruit of this mystery is Humility
+                    <br>It is appropriate to begin the rosary with the virtue of humility. The Catechism of the Catholic Church states that "Humility is the foundation of prayer. Only when we humbly acknowledge that we do not know how to pray as we ought, are we ready to receive freely the gift of prayer. Man is a beggar before God." (CCC 2559)
+                  <li class="MyText PBD2">The Visitation -  The Fruit of this mystery is Love of Neighbor
+                    <br>Mary hastened to her cousin Elizabeth&apos;s house to help her in her time of need. In what ways can we be of service to our own neighbor&apos;s today, whether we find that neighbor in our own home, in our community, at work, or on the internet?
+                  <li class="MyText PBD3">The Nativity of the Lord -  The Fruit of this mystery is Poverty of Spirit, Detachment from the Things of the World
+                    <br>We live in a very consumerist culture. This mystery invites us to detach ourselves from our many possessions. What do we truly need and what is excess? What can we share with others?
+                  <li class="MyText PBD4">Presentation -  The Fruit of this mystery is Obedience
+                    <br>Mary and Joseph humbly brought Jesus to the temple in accord with Jewish law. Obedience to God and to others can be very difficult, but offers us the opportunity to subjugate our own will to that of our heavenly Father. Not my will, but God&apos;s will be done.
+                  <li class="MyText PBD5">Finding of the Child Jesus in the Temple -  The Fruit of this mystery is Piety, Joy in finding Jesus
+                    <br>Piety is dedication to the Church&apos;s sacramental life and devotions. Mary and Joseph were surprised to find Jesus in the temple. We, too, should be dedicated to our Church and the sacraments.
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion4">
+                <ol>
+                  <li class="MyText PBD1">The Annunciation
+                    <br>That the Good News of a Savior, first announced to Mary, may be proclaimed to all the world.
+                  <li class="MyText PBD2">The Visitation
+                    <br>That missionaries who travel long roads bearing Christ to those in need may be strengthened in faith and holiness.
+                  <li class="MyText PBD3">The Birth of Jesus
+                    <br>For the children of the missions, especially those who are poor and homeless, that they may know the love of Jesus.
+                  <li class="MyText PBD4">The Presentation of the Child Jesus in the Temple
+                    <br>That Catholic families of the missions, by the example of their lives, may show the love of Christ to their neighbors.
+                  <li class="MyText PBD5">The Finding of the Child Jesus in the Temple
+                    <br>That all the people of the missions who live in sorrow may find in the Gospel message of Jesus new life and peace.
+                </ol>
+              </div>
+            </div>
+            <div class="MySubPage MySubPage2">
+              <h2>The Luminous Mysteries (Thursdays)</h2>
+              <div class="MyVersion MyVersion1">
+                <ol>
+                  <li class="MyText PBD1"> The Baptism of Jesus:
+                    <br>And when Jesus was baptized, he went up immediately from the water, and behold, the heavens were opened and he saw the Spirit of God descending like a dove. -- Matthew 3:16
+                  <li class="MyText PBD2">The Wedding Feast of Cana:
+                    <br>Jesus said to her, "Woman, what concern is this to us? My hour has not yet come." His mother said to the servants, "Do whatever he tells you." ... This, the first of his signs, Jesus did at Cana in Galilee. -- John 2:4-5, 11
+                  <li class="MyText PBD3">The Preaching of the Kingdom:
+                    <br>Jesus came into Galilee, preaching the gospel of God, and saying, "The time is fulfilled, and the kingdom of God is at hand; repent, and believe in the gospel." -- Mark 1:14-15
+                  <li class="MyText PBD4">The Transfiguration:
+                    <br>And as [Jesus] was praying, the appearance of his countenance was altered, and his raiment became dazzling white... And a voice came out of the cloud, saying, "This is my Son, my Chosen; listen to him!" -- Luke 9:29-35
+                  <li class="MyText PBD5">The Institution of the Eucharist:
+                    <br>Now as they were eating, Jesus took bread, and blessed, and broke it, and gave it to the disciples and said, "Take, eat; this is my body." -- Matthew 26:26-27
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion2">
+                <ol>
+                  <li class="MyText PBD1">The Baptism of Jesus - I desire to live my Baptismal Promises
+                    <br>Think of Christ&apos;s Baptism at the hands of John the Baptist when the Father called Him His Beloved Son and the Holy Spirit descended on Him to invest Him with the mission He was to carry out.
+                  <li class="MyText PBD2">The Miracle at Cana -  I desire to do Whatever Jesus says
+                    <br>Think of Christ&apos;s self-manifestation at the wedding at Cana when He changed water into wine and opened the hearts of the disciples to faith, thanks to the intervention of Mary, the first among believers.
+                  <li class="MyText PBD3">The Proclamation of the Kingdom of God -  I desire for Go&apos;s forgiveness
+                    <br>Think of Christ&apos;s preaching of the Kingdom of God with its call to forgiveness, as He inaugurated the ministry of Mercy, which He continues to exercise until the end of the world, particularly through the sacrament of Reconciliation.
+                  <li class="MyText PBD4"> The Transfiguration - I desire to become a new person in Christ
+                    <br>Think of Christ&apos;s Transfiguration when the glory of the Godhead shone forth from His face as the Father commanded the Apostles to listen to Him and experience His Passion and Resurrection and be transfigured by the Holy Spirit.
+                  <li class="MyText PBD5">The Institution of the Eucharist - I desire for Active Participation at Mass
+                    <br>
+                    Think of Christ&apos;s institution of the Eucharist, in which He offered His Body and Blood as food under the signs of bread and wine and testified to His love for humanity, for whose sake He would offer Himself in sacrifice.
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion3">
+                <ol>
+                  <li class="MyText PBD1">The Baptism of Jesus -  The Fruit of this mystery is Openness to the Holy Spirit
+                    <br>We each receive the Holy Spirit in a special way in Baptism and again at Confirmation. The gifts of the Holy Spirit are wisdom, understanding, counsel, fortitude, knowledge, piety, and fear of the Lord. We need only ask the Holy Spirit for help and help will be provided.
+                  <li class="MyText PBD2">The Miracle at Cana -  The Fruit of this mystery is To Jesus through Mary
+                    <br>Mary encouraged her Son to perform his first miracle at the Wedding at Cana. She simply told the servants to "do whatever he tells you." She helps us in a similar way - always pointing us to her Son and interceding on our behalf. We need only to turn to her and ask for help.
+                  <li class="MyText PBD3">Proclamation of the Kingdom of God -  The Fruit of this mystery is Repentance, Trust in God, Desire for holiness
+                    <br>Jesus spent the active years of his ministry preaching and performing miracles to proclaim the Kingdom of God. He asks us to express sorrow from our sin, turn away from sin, and trust in God.
+                  <li class="MyText PBD4">Transfiguration -  The Fruit of this mystery is Desire for Holiness? Acknowledgement of Christ&apos;s Divinity
+                    <br>Jesus gave three of his closest friends a glimpse of His glory at the Transfiguration. We, too, are called to holiness, and to ultimately live in glory in heaven. But, we need to want it and we need to want it more than what the world and the devil attempts to offer us.
+                  <li class="MyText PBD5">Institution of the Eucharist -  The Fruit of this mystery is Eucharistic Adoration, Active Participation at Mass
+                    <br>Jesus gave us the greatest gift in the Eucharist. He gave us His very self. This mystery invites us to appreciate that gift fully and to participate at Mass often
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion4">
+                <ol>
+                  <li class="MyText PBD1">The Baptism in the Jordan
+                    <br>In a hospital in Hong Kong, a Chinese Sister spoke to a young cancer patient about God, our loving Father, and about heaven, our eternal home. The boy, an orphan, told her: "I never had a father. I never had a home." Baptized, the boy made the journey to God clothed in Christ because a Sister had shared with him the fruits of her own baptism.
+                  <li class="MyText PBD2">The Wedding of Cana
+                    <br>Mother Teresa tells of bringing rice to a hungry family. The next day she discovered the food was gone. It seems that a neighboring family had no food either, so the first family shared what Mother Teresa had brought them. The neighbors, of a different faith, were witnesses to Christian love.
+                  <li class="MyText PBD3">The Proclamation of the Kingdom of God and Call to Conversion
+                    <br>In East Africa, a Catholic family heard of a village far from their own where the people had never heard of Christ. In prayer, and in love, they decided to move to the distant village so that day by day they could tell -- and show -- the people what it means to be a follower of Christ.
+                  <li class="MyText PBD4">The Transfiguration
+                    <br>To catch even a glimpse of the glory that awaits us in Christ is a gift beyond compare for millions of people whose lives are a daily struggle. Such a glimpse was caught in Liberia, West Africa. When people by the hundreds fled from their homes in the midst of civil war, their pastor said, "They left all their belongings behind, but they brought with them one valuable possession -- their faith."
+                  <li class="MyText PBD5">The Institution of the Eucharist
+                    <br>World Mission Sunday, celebrated each year on the next-to-last Sunday in October, in the context of the Mass, reminds us that we who eat Christ&apos;s Body and drink his Blood are sent to continue his mission to the world. "Supported by Mary, we will not hesitate to devote ourselves generously to taking the proclamation of the Good News to the ends of the earth," said Pope John Paul II.
+                </ol>
+              </div>
+            </div>
+            <div class="MySubPage MySubPage3">
+              <h2>The Sorrowful Mysteries: (Tuesdays and Fridays)</h2>
+              <div class="MyVersion MyVersion1">
+                <ol>
+                  <li class="MyText PBD1"> The Agony in the Garden:
+                    <br>And going a little farther [Jesus] fell on his face and prayed, "My Father, if it be possible, let this cup pass from me; nevertheless, not as I will, but as thou wilt." -- Matthew 26:39
+                  <li class="MyText PBD2">The Scourging:
+                    <br>Then [Pilate] released for them Barabbas, and having scourged Jesus, delivered him to be crucified. -- Matthew 27:26
+                  <li class="MyText PBD3">The Crowning with Thorns:
+                    <br>And they stripped him and put a scarlet robe upon him, and plaiting a crown of thorns they put it on his head, and put a reed in his right hand. -- Matthew 27:28-29
+                  <li class="MyText PBD4">The Carrying of the Cross:
+                    <br>And when they had mocked him, they stripped him of the robe, and put his own clothes on him, and led him away to crucify him... They came upon a man of Cyrene, Simon by name; this man they compelled to carry his cross. -- Matthew 27:31-32
+                  <li class="MyText PBD5">The Crucifixion:
+                    <br>And Jesus cried again with a loud voice and yielded up his spirit. And behold, the curtain of the temple was torn in two, from top to bottom; and the earth shook, and the rocks were split. -- Matthew 27:50-51
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion2">
+                <ol>
+                  <li class="MyText PBD1">The Agony in the Garden - I desire for True repentance for my sins
+                    <br>Think of our Lord Jesus in the garden of Gethsemane, suffering a bitter agony for our sins.
+                  <li class="MyText PBD2">The Scourging at the Pillar - I desire for a Spirit of Mortification
+                    <br>Think of the cruel scourging at the pillar that our Lord suffered: the heavy blows that tore His flesh.
+                  <li class="MyText PBD3">The Crowning with Thorns - I desire for Moral Courage
+                    <br>Think of the crown of sharp thorns that was forced upon our Lord&apos;s sacred Head and the patience with which He endured the pain for our sins.
+                  <li class="MyText PBD4">The Carrying of the Cross - I desire for the virtue of Patience
+                    <br>Think of the heavy Cross, so willingly carried by our Lord, and ask Him to help you to carry your crosses without complaint
+                  <li class="MyText PBD5">The Crucifixion and death of our Lord - I desire for the grace of final Perseverance
+                    <br>Think of the love which filled Christ&apos;s Sacred Heart during His three hours of agony on the Cross, and ask Him to be with you at the hour of death.
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion3">
+                <ol>
+                  <li class="MyText PBD1">Agony in the Garden -  The Fruit of this mystery is Contrition, Conformity to the Will of God
+                    <br>Jesus, both fully human and fully divine, suffered immensely in the garden. He knew what was coming and he was terrified. He begged His Father to spare him, but submitted Himself fully to His will. We, too, are called to do this.
+                  <li class="MyText PBD2">Scourging at the Pillar -  The Fruit of this mystery is Purity, Mortification (control of one&apos;s senses)
+                    <br>Mortification isn&apos;t popular these days, but making small sacrifices and offering them up can be a great help to one&apos;s spiritual life. There is an opportunity every day to sacrifice and to suffer in some small way.
+                  <li class="MyText PBD3">Crowning with Thorns -  The Fruit of this mystery is Moral Courage
+                    <br>Jesus remained resolute even as he was being made fun of. Do we have the courage to stand up for our convictions even when we are being laughed at? Whose opinion matters more - God&apos;s or those who surround us?
+                  <li class="MyText PBD4">Carrying of the Cross -  The Fruit of this mystery is Patience
+                    <br>Patience is something we all seem to have difficulty with. Jesus patiently carried his cross through the streets of Jerusalem on the way to his Crucifixion. We can look to him for help when we are tempted to lose our patience.
+                  <li class="MyText PBD5">Crucifixion -  The Fruit of this mystery is Salvation, Self-Denial, Perseverance
+                    <br>Jesus gave up everything for us on the cross. His took on the sins of the world, past, present, and future, and died for our salvation. We need to be so thankful for that gift. At the same time, when we are asked to die to ourselves and put others first, we can look to the cross for the example of total self-giving.
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion4">
+                <ol>
+                  <li class="MyText PBD1">The Agony in the Garden
+                    <br>That all who persevere in faith in the missions may feel the presence of the Lord in their lives.
+                  <li class="MyText PBD2">The Scourging at the Pillar
+                    <br>That all who suffer in body, especially the hungry millions in the missions, may be fed and comforted through our sharing.
+                  <li class="MyText PBD3">The Crowning with Thorns
+                    <br>That all those who suffer from despair, especially the refugees of the missions, may find hope in Christ&apos;s promise of eternal happiness for those who believe in Him.
+                  <li class="MyText PBD4">The Carrying of the Cross
+                    <br>For the Church in the United States, that by our prayers and sacrifices for the missions, we may help bear the burdens of our brothers and sisters worldwide.
+                  <li class="MyText PBD5">The Crucifixion
+                    <br>That those who hunger and thirst for justice in the missions may work peacefully and successfully toward their goal.
+                </ol>
+              </div>
+            </div>
+            <div class="MySubPage MySubPage4">
+              <h2>The Glorious Mysteries: (Wednesdays and Sundays)</h2>
+              <div class="MyVersion MyVersion1">
+                <ol>
+                  <li class="MyText PBD1"> The Resurrection:
+                    <br>Then the other disciple, who reached the tomb first, also went in, and he saw and believed; for as yet they did not know the scripture, that he must rise from the dead. -- John 20:8
+                  <li class="MyText PBD2">The Ascension of the Lord:
+                    <br>He said to them, "It is not for you to know times or seasons which the Father has fixed by his own authority. But you shall receive power when the Holy Spirit has come upon you." ... When he had said this, as they were looking on, he was lifted up, and a cloud took him out of their sight. -- Acts 1:7-9
+                  <li class="MyText PBD3">The Descent of the Holy Spirit:
+                    <br>There appeared to them tongues as of fire, distributed and resting on each one of them. And they were all filled with the Holy Spirit. -- Acts 2:3-4
+                  <li class="MyText PBD4">The Assumption of Our Blessed Mother:
+                    <br>For since we believe that Jesus died and rose again, even so, through Jesus, God will bring with him those who have fallen asleep. -- 1 Thessalonians 4:14
+                  <li class="MyText PBD5">The Crowning of Mary as Queen of Heaven:
+                    <br>A great portent appeared in heaven, a woman clothed with the sun, with the moon under her feet, and on her head a crown of twelve stars. -- 1 Revelation 12:1
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion2">
+                <ol>
+                  <li class="MyText PBD1">The Resurrection -  I desire for a strong Faith
+                    <br>Think of Christ&apos;s glorious triumph when, on the third day after His death, He arose from the tomb and for forty days appeared to His Blessed Mother and to His disciples.
+                  <li class="MyText PBD2">The Ascension - I desire for the virtue of Hope
+                    <br>Think of the Ascension of Jesus Christ, forty days after His glorious Resurrection, in the presence of Mary and His disciples.
+                  <li class="MyText PBD3">The Descent of the Holy Spirit - I desire for Zeal for the Glory of God
+                    <br>Think of the descent of the Holy Spirit upon Mary and the Apostles, under the form of tongues of fire, in fulfillment of Christ&apos;s promise.
+                  <li class="MyText PBD4">The Assumption of Mary - I desire for the grace of a Happy death
+                    <br>Think of the glorious Assumption of Mary into Heaven, when she was united with her Divine Son.
+                  <li class="MyText PBD5">The Coronation of the Blessed Virgin Mary - I desire for a greater love for Mary
+                    <br>Think of the glorious crowning of Mary as Queen of Heaven by her Divine Son, to the great joy of all the Saints.
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion3">
+                <ol>
+                  <li class="MyText PBD1">The Resurrection -  The Fruit of this mystery is Faith
+                    <br>It takes great faith to believe that Jesus rose from the dead and that we, too, shall rise. As Jesus told his apostles, "Blessed are that who have not seen, and yet believe."  This mystery offers us help in maintaining that faith. "Lord, I believe. Please help my unbelief!"
+                  <li class="MyText PBD2">The Ascension -  The Fruit of this mystery is Hope, Desire for Heaven
+                    <br>We hope for a world that is better than this one. We desire to live forever with Jesus in heaven. May that hope help shape our lives here on Earth.
+                  <li class="MyText PBD3">The Descent of the Holy Spirit -  The Fruit of this mystery is Wisdom, Love of God
+                    <br>The disciples were scared. They huddled together in that upper room not sure of what to do. Then the Spirit of the Lord came upon them and they were ready to go out and give their very lives in service to God. May the Holy Spirit also grant us that wisdom and love of God.
+                  <li class="MyText PBD4">The Assumption of Mary -  The Fruit of this mystery is Devotion to Mary, Happy death
+                    <br>Mary was brought up to heaven body and soul. We are devoted to her because of her relationship to her Son and because God saw fit to raise her up. "Blessed are you among women and Blessed is the fruit of your womb, Jesus."
+                  <li class="MyText PBD5">The Coronation of the Blessed Virgin Mary -  The Fruit of this mystery is Eternal Happiness, Perseverance
+                    <br>Mary is the Queen of Heaven, enjoying forever her rightful place next to her Son. May we one day share in her happiness.
+                </ol>
+              </div>
+              <div class="MyVersion MyVersion4">
+                <ol>
+                  <li class="MyText PBD1">The Resurrection
+                    <br>For the Church worldwide, that our faith in the Risen Christ may draw others to Him.
+                  <li class="MyText PBD2">The Ascension
+                    <br>That Christ, who lived as a man and returned to the Father, will grant to all people knowledge of the way to eternal life.
+                  <li class="MyText PBD3">The Descent of the Holy Spirit upon the Apostles
+                    <br>For our Holy Father, that the Holy Spirit will grant him wisdom, fortitude and holiness as he guides the Church in the path of Christ.
+                  <li class="MyText PBD4">The Assumption of Our Lady
+                    <br>That Mary, who gave the human body of Christ to the world, may inspire us who form the Body of Christ on earth to proclaim His message to all peoples.
+                  <li class="MyText PBD5">The Crowning of Our Lady Queen of Heaven
+                    <br>That through the intercession of Mary, Queen of the Missions, young men and women will offer their lives to God as priests and religious in service of their neighbors.
+                </ol>
+              </div>
+            </div>
+            <div class="MySubPage MySubPage5">
+              <br>
+              <ol>
+                <li class="MyText PBD1">A person&apos;s life is patterned on the life of Jesus. Jesus was conceived, born, grew in grace, wisdom and age. As an adult, He worked at a trade, carried on His ministry with difficulty. He suffered, died and was buried. Let us reflect on the mystery of suffering. Jesus suffered a bitter agony and the cruel scourging to lead us on the way to the Father. Let our prayer intention be that <span class="Deceased"></span>, having accepted the suffering of life, may be at peace with the Lord.
+                <li class="MyText PBD2">Now let us consider how Jesus willingly bore our sins when He was crowned with thorns, carried His cross to Calvary and was then crucified on the cross in a supreme act of love. Let our intention be that <span class="Deceased"></span> having carried his/her cross, may now share the glory of a true disciple.
+                <li class="MyText PBD3">Now let us reflect on the Glorious Mystery of Jesus rising from the dead. Jesus said: <b>I am the Resurrection and the life, whoever believes in Me, though he should die, will come to life.</b> This is the glory of Easter and of our faith; that we too will be raised to glory. Let our intention be that <span class="Deceased"></span> , having believed in the Lord is now with Him in glory.
+                <li class="MyText PBD4">Now let us contemplate the Ascension of Jesus into heaven and His sending us the Holy Spirit. Before Jesus returned to the Father, He promised the Apostles and all disciples present and future, that He was returning to the Father to prepare a place for them, that He would send His Spirit to guide them and that He would be with them until the end of time. Let our intention be that <span class="Deceased"></span> &apos;s family and all others who mourn loved ones, be assured that they have reached the place that Jesus prepared for them.
+                <li class="MyText PBD5">Now let us reflect on the role of the Blessed Virgin Mary in our Christian life by considering the meaning of her Assumption into Heaven and her Coronation as Queen of Heaven. Mary is honored by God and all humankind. She was the most perfect disciple and the model of all the saints. Because of her perfect faith and obedience, her standing at the foot of the cross of Jesus; all Catholics believe she was assumed into Heaven, and was honored not only by God, but by all the angels and saints as well. We don&apos;t know exactly what her reward was but in our finite way, we say she was crowned with Glory and honor. Her crown of sparking jewels is a symbol of her reward. Let our intention be that <span class="Deceased"></span> also receives the reward of his/her faith.
+              </ol>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button type="button" class="btn btn-success Arrow" onClick="NextState()">&rarr;</button>
+          <button type="button" class="btn btn-secondary" onClick="Walkthru()"><span class="MyBead"></span></button>
+          <button type="button" class="btn btn-success Arrow" onClick="PrevState()">&larr;</button>
+          <div class="btn-group" role="group" aria-label="Mystery">
+            <button type="button" class="MyDecadeSel MyDecadeSel0 btn btn-secondary" onClick="SelectDecade(0);DisplayState()">Into</button>
+            <button type="button" class="MyDecadeSel MyDecadeSel1 btn btn-secondary" onClick="SelectDecade(1);DisplayState()">First</button>
+            <button type="button" class="MyDecadeSel MyDecadeSel2 btn btn-secondary" onClick="SelectDecade(2);DisplayState()">Second</button>
+            <button type="button" class="MyDecadeSel MyDecadeSel3 btn btn-secondary" onClick="SelectDecade(3);DisplayState()">Third</button>
+            <button type="button" class="MyDecadeSel MyDecadeSel4 btn btn-secondary" onClick="SelectDecade(4);DisplayState()">Fourth</button>
+            <button type="button" class="MyDecadeSel MyDecadeSel5 btn btn-secondary" onClick="SelectDecade(5);DisplayState()">Fifth</button>
+            <button type="button" class="MyDecadeSel MyDecadeSel6 btn btn-secondary" onClick="SelectDecade(6);DisplayState()">Closing</button>
+          </div>
+          <div class="btn-group MySubPage MySubPage1 MySubPage2 MySubPage3 MySubPage4" role="group" aria-label="Mystery">
+            <button type="button" class="MySubPageSel MySubPageSel1 btn btn-secondary" onClick="SelectSubPage(1)">Joyful</button>
+            <button type="button" class="MySubPageSel MySubPageSel2 btn btn-secondary" onClick="SelectSubPage(2)">Luminous</button>
+            <button type="button" class="MySubPageSel MySubPageSel3 btn btn-secondary" onClick="SelectSubPage(3)">Sorrowful</button>
+            <button type="button" class="MySubPageSel MySubPageSel4 btn btn-secondary" onClick="SelectSubPage(4)">Glorious</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
