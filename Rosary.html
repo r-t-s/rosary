@@ -10,12 +10,12 @@
     <style>
       .Deceased {font-weight:bold; font-style: italic;}
       h1 {text-align:center}
-      .FirstArrow {border-radius:50%; font-size:2em}
+      .FirstArrow {border-radius:50%; font-size:3em}
       .Arrow {border-radius:50%; font-size:1.5em}
       .MyBead {font-size:1.5em}
       body {margin:10px}
       .MyPage {margin:10px}
-      .NonSelectedBead {background-color:lightyellow;color: black;border-radius:50%}
+      .NonSelectedBead {background-color:white;color: black;border-radius:50%}
       .SelectedBead {background-color:yellow;color: #008900;border-radius:50%}
     </style>
     <script>
@@ -157,7 +157,7 @@
               if (msg.prev().length == 1) {
                   msg = msg.prev();
               }
-              let _top = msg[0].offsetTop - _Var.HeaderHeight;
+              let _top = msg[0].offsetTop - _Var.HeaderHeight - 50;
               $(".MyBody").scrollTop(_top);
           }
       }
@@ -288,9 +288,9 @@
       </div>
     </div>
     <div class="d-flex w-100">
-      <div class="float-start" style="width:40px">
+      <div class="float-start" style="width:40px;z-index:1000">
         <button type="button" class="btn btn-success FirstArrow" onClick="NextState()">&rarr;</button>
-        <button type="button" class="btn btn-secondary" onClick="Walkthru()"><span class="MyBead"></span></button>
+        <button type="button" class="btn btn-dark" onClick="Walkthru()"><span class="MyBead"></span></button>
         <button type="button" class="btn btn-success Arrow" onClick="PrevState()">&larr;</button>
       </div>
       <div class="d-flex w-100 flex-grow-1 flex-fill overflow-auto MyBody ">
