@@ -29,6 +29,7 @@
       const StateMachinePost = [
           "PHHQ", "PDA", "PIHF", "POF", "PHM", "PGB", "PSM", "PM", "PCL"];
       let _Var = {
+          AllowStateChange: true,
           Cross: 9840,
           BigBead: 10057,
           LittleBead: 10039,
@@ -74,24 +75,42 @@
           $(".MySubPageSel" + page).addClass("btn-success");
           SelectDecade(0);
       }
-      function PrevState() {
-          let DState = GetDecadeState();
-          if (_Var.DecadeCnt > 0) {
-              _Var.DecadeCnt = (_Var.DecadeCnt + DState.length - 1) % DState.length;
-          } else {
-              PrevDecade();
-              DState = GetDecadeState();
-              _Var.DecadeCnt = DState.length  - 1;
+      function StateUI(cls) {
+          if (_Var.AllowStateChange) {
+              _Var.AllowStateChange = false;
+              $("." + cls).removeClass("btn-success");
+              $("." + cls).addClass("btn-warning");
+              window.setTimeout(() => {
+                  _Var.AllowStateChange = true;
+                  $("." + cls).removeClass("btn-warning");
+                  $("." + cls).addClass("btn-success");
+              }, 2000);
+              return true;
           }
-          DisplayState();
+          return (false);
+      }
+      function PrevState() {
+          if (StateUI("PrevState")) {
+              let DState = GetDecadeState();
+              if (_Var.DecadeCnt > 0) {
+                  _Var.DecadeCnt = (_Var.DecadeCnt + DState.length - 1) % DState.length;
+              } else {
+              PrevDecade();
+                  DState = GetDecadeState();
+                  _Var.DecadeCnt = DState.length  - 1;
+              }
+              DisplayState();
+          }
       }
       function NextState() {
-          let DState = GetDecadeState();
-          _Var.DecadeCnt = (_Var.DecadeCnt + 1) % DState.length;
-          if (_Var.DecadeCnt == 0) {
-              NextDecade();
+          if (StateUI("NextState")) {
+              let DState = GetDecadeState();
+              _Var.DecadeCnt = (_Var.DecadeCnt + 1) % DState.length;
+              if (_Var.DecadeCnt == 0) {
+                  NextDecade();
+              }
+              DisplayState();
           }
-          DisplayState();
       }
       function PrevDecade() {
           if (_Var.Decade > 0) {
@@ -289,9 +308,9 @@
     </div>
     <div class="d-flex w-100">
       <div class="float-start" style="width:40px;z-index:1000">
-        <button type="button" class="btn btn-success FirstArrow" onClick="NextState()">&rarr;</button>
+        <button type="button" class="btn btn-success FirstArrow NextState" onClick="NextState()">&rarr;</button>
         <button type="button" class="btn btn-dark" onClick="Walkthru()"><span class="MyBead"></span></button>
-        <button type="button" class="btn btn-success Arrow" onClick="PrevState()">&larr;</button>
+        <button type="button" class="btn btn-success Arrow PrevState" onClick="PrevState()">&larr;</button>
       </div>
       <div class="d-flex w-100 flex-grow-1 flex-fill overflow-auto MyBody ">
         <div class="w-100 MyPage MyPage1">
